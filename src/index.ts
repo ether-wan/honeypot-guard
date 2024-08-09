@@ -7,6 +7,7 @@ import expressWinston from 'express-winston';
 
 import { logger } from "./config/index";
 import { Request, Response } from 'express';
+import { fastCheckHoneypotV2, fastCheckHoneypotV3 } from './honeypot-guard/fastChecker';
 
 const app = express();
 
@@ -30,6 +31,9 @@ app.use(expressWinston.errorLogger({
 app.get('/', async (req: Request, res: Response) => {
     res.send('Hello World!');
 });
+
+app.post("/v2/fast-check-honeypot", fastCheckHoneypotV2);
+app.post("/v3/fast-check-honeypot", fastCheckHoneypotV3);
 
 
 app.listen(4000, () => {
