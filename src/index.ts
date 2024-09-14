@@ -7,7 +7,8 @@ import expressWinston from 'express-winston';
 
 import { logger } from "./config/index";
 import { Request, Response } from 'express';
-import { fastCheckHoneypotV2, fastCheckHoneypotV3 } from './honeypot-guard/fastChecker';
+import { fastCheckHoneypotV2, fastCheckHoneypotV3 } from './honeypot-guard/fast-checker';
+import { validate, honeypotV2CheckSchema } from './middlewares/validate-schema';
 
 const app = express();
 
@@ -32,7 +33,11 @@ app.get('/', async (req: Request, res: Response) => {
     res.send('Hello World!');
 });
 
-app.post("/v2/fast-check-honeypot", fastCheckHoneypotV2);
+app.post(
+    "/v2/fast-check-honeypot", 
+    validate(honeypotV2CheckSchema),
+    fastCheckHoneypotV2
+);
 app.post("/v3/fast-check-honeypot", fastCheckHoneypotV3);
 
 
