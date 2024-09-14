@@ -1,18 +1,16 @@
 import { Request, Response } from "express";
 import { functionEncoder } from "../utils/encoder";
-import { overrideBalance } from "../utils/stateOverride";
-import { createPublicClient, decodeAbiParameters, erc20Abi, formatEther, http, toHex } from "viem";
-import { mainnet } from "viem/chains";
+import { overrideBalance } from "../utils/state-override";
+import { decodeAbiParameters, erc20Abi, formatEther, toHex } from "viem";
 import { MULTICALL_3, logger } from "../config/index";
+import { publicClient } from "../config/index";
 
 const multicall3Abi = require("../abi/Multicall.json");
+
 const routerV2Abi = require("../abi/UniswapV2Router.json");
 const routerV3Abi = require("../abi/UniswapV3Router.json");
 
-const publicClient = createPublicClient({
-    chain: mainnet,
-    transport: http("https://eth.llamarpc.com")
-});
+/// token w/ tax : 0x048d07Bd350ba516b84587E147284881B593Eb86
 
 /**
  * @notice Check if a pair is a honeypot faster buy trying to swap and sell the target token without verifying tax
@@ -22,15 +20,21 @@ const publicClient = createPublicClient({
  */
 export const fastCheckHoneypotV2 = async (req : Request, res : Response) => {
 
-    const {routerAddress, accountToOverride, tokenTargetAddress, mainTokenAddress, amountMainToken, mainTokenBalanceSlot } = req.body;
+    const { 
+        routerAddress, 
+        accountToOverride, 
+        tokenTargetAddress, 
+        mainTokenAddress, 
+        amountMainToken, 
+        mainTokenBalanceSlot } = req.body;
 
     const deadline = toHex(Math.round(Date.now() / 1000) + 60 * 20);
 
-    const approveFunctionData = functionEncoder(erc20Abi, "approve", [routerAddress, amountMainToken]);
+    const approveFunctionData = functionEncoder(erc20Abi, "approve", [routerAddress, "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"]);
 
     const swapMainForTarget = functionEncoder(routerV2Abi, "swapExactTokensForTokens", [amountMainToken, 0, [mainTokenAddress, tokenTargetAddress], MULTICALL_3, deadline]);
 
-    const swapSomeTargetForMain = functionEncoder(routerV2Abi, "swapExactTokensForTokens", [BigInt(1e16), 0, [tokenTargetAddress, mainTokenAddress], MULTICALL_3, deadline]);
+    const swapSomeTargetForMain = functionEncoder(routerV2Abi, "swapExactTokensForTokensSupportingFeeOnTransferTokens", ["1000000000000000000", 0, [tokenTargetAddress, mainTokenAddress], MULTICALL_3, deadline]);
 
     const balanceOfFunctionData = functionEncoder(erc20Abi, "balanceOf", [MULTICALL_3]);
 
@@ -97,7 +101,7 @@ export const fastCheckHoneypotV2 = async (req : Request, res : Response) => {
     
         const logData = {
             tokenTarget : tokenTargetAddress,
-            amountMainTokenSwaped : amountMainToken,
+            amountMainTokenSwaped : formatEther(amountMainToken),
             amountTokenTargetReceived : formatEther(decodedData[0][1] as any),
             balanceAfterSwap : formatEther(decodeAbiParameters([{ type: 'uint256', name: 'balanceOf' }],result[1][3]) as any)
         }
@@ -211,7 +215,4 @@ export const fastCheckHoneypotV3 = async (req : Request, res : Response) => {
             error
         })
     }
-
-
-
 }
