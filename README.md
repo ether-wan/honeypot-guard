@@ -1,1 +1,1 @@
-## Honeypot Guard - A lightweight service for protecting your invests
+## Token Guard - A lightweight service for protecting your invests
